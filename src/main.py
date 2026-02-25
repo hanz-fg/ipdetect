@@ -18,6 +18,7 @@ cursor.execute("""
                                                          vpn TEXT,
                                                          asn_type TEXT,
                                                          proxy_type TEXT,
+                                                         country TEXT,
                                                          checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                )
                """)
@@ -32,15 +33,15 @@ with SB(uc=True, test=True, proxy=proxy_str) as sb:
 
     for x in range(255):
         for y in range(255):
-            ip = f"64.52.{x}.{y}"
+            ip = f"156.239.{x}.{y}"
             try:
                 scam_data = check_ip(sb, ip)
                 ipinfo_data = check_ipinfo(sb, ip)
                 data = {**scam_data, **ipinfo_data}
 
                 cursor.execute("""
-                               INSERT INTO ip_results (ip, fraud_score, data_center, server, vpn, asn_type, proxy_type)
-                               VALUES (?, ?, ?, ?, ?, ?, ?)
+                               INSERT INTO ip_results (ip, fraud_score, data_center, server, vpn, asn_type, proxy_type, country)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                                """, (
                                    data["ip"],
                                    data["fraud_score"],
@@ -48,11 +49,12 @@ with SB(uc=True, test=True, proxy=proxy_str) as sb:
                                    data["server"],
                                    data["vpn"],
                                    data["asn_type"],
-                                   data["proxy_type"]
+                                   data["proxy_type"],
+                                   data["country"]
                                ))
                 conn.commit()
 
-                print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']}")
+                print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']} | {data['country']}")
             except Exception as e:
                 print(f"failed {ip}: {e}")
             time.sleep(random.uniform(3, 7))
