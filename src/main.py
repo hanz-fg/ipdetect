@@ -23,40 +23,51 @@ cursor.execute("""
                )
                """)
 conn.commit()
+def run_scraper():
+    proxy = random.choice(load_proxies())
+    proxy_str = f"{proxy['user']}:{proxy['pass']}@{proxy['host']}:{proxy['port']}"
 
-proxy = random.choice(load_proxies())
-proxy_str = f"{proxy['user']}:{proxy['pass']}@{proxy['host']}:{proxy['port']}"
+    with SB(uc=True, test=True, proxy=proxy_str) as sb:
+        sb.uc_open_with_reconnect("https://api.ipify.org", 4)
+        print("Outgoing IP:", sb.get_text("body"))
 
-with SB(uc=True, test=True, proxy=proxy_str) as sb:
-    sb.uc_open_with_reconnect("https://api.ipify.org", 4)
-    print("Outgoing IP:", sb.get_text("body"))
+        for x in range(255):
+            for y in range(255):
+                ip = f"156.239.{x}.{y}"
+                #skipping ips already checked
+                cursor.execute("SELECT * FROM ip_results WHERE ip=?", (ip,))
+                if cursor.fetchone():
+                    continue
+                try:
+                    scam_data = check_ip(sb, ip)
+                    ipinfo_data = check_ipinfo(sb, ip)
+                    data = {**scam_data, **ipinfo_data}
 
-    for x in range(255):
-        for y in range(255):
-            ip = f"156.239.{x}.{y}"
-            try:
-                scam_data = check_ip(sb, ip)
-                ipinfo_data = check_ipinfo(sb, ip)
-                data = {**scam_data, **ipinfo_data}
+                    cursor.execute("""
+                                   INSERT INTO ip_results (ip, fraud_score, data_center, server, vpn, asn_type, proxy_type, country)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                   """, (
+                                       data["ip"],
+                                       data["fraud_score"],
+                                       data["data_center"],
+                                       data["server"],
+                                       data["vpn"],
+                                       data["asn_type"],
+                                       data["proxy_type"],
+                                       data["country"]
+                                   ))
+                    conn.commit()
 
-                cursor.execute("""
-                               INSERT INTO ip_results (ip, fraud_score, data_center, server, vpn, asn_type, proxy_type, country)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                               """, (
-                                   data["ip"],
-                                   data["fraud_score"],
-                                   data["data_center"],
-                                   data["server"],
-                                   data["vpn"],
-                                   data["asn_type"],
-                                   data["proxy_type"],
-                                   data["country"]
-                               ))
-                conn.commit()
-
-                print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']} | {data['country']}")
-            except Exception as e:
-                print(f"failed {ip}: {e}")
-            time.sleep(random.uniform(3, 7))
+                    print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']} | {data['country']}")
+                except Exception as e:
+                    print(f"failed {ip}: {e}")
+                time.sleep(random.uniform(3, 7))
+while True:
+    try:
+        run_scraper()
+        break
+    except Exception as e:
+        print(f"Browser crashed: {e}")
+        time.sleep(10)
 
 conn.close()
