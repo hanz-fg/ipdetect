@@ -1,0 +1,8 @@
+venv/
+results/
+.idea/
+__pycache__/
+src/downloaded_files/
+*.pyc
+.env
+proxies.json
