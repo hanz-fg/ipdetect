@@ -72,6 +72,7 @@ def run_scraper():
                 ipinfo_data = check_ipinfo(sb, ip)
                 data = {**scam_data, **ipinfo_data}
 
+                print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']} | {data['country']}")
                 if data["data_center"].lower() == "unknown" and data["asn_type"].lower() == "isp":
                     cursor.execute("""
                                    INSERT INTO ip_results (ip, fraud_score, data_center, server, vpn, asn_type, proxy_type, country)
@@ -80,8 +81,7 @@ def run_scraper():
                                        data["ip"], data["fraud_score"], data["data_center"],
                                        data["server"], data["vpn"], data["asn_type"],
                                        data["proxy_type"], data["country"]
-                                   ))
-                    print(f"{ip} -> {data['fraud_score']} | {data['asn_type']} | {data['proxy_type']} | {data['country']}")
+                                   )
                 cursor.execute("UPDATE ip_jobs SET status = 'done' WHERE ip = ?", (ip,))
                 conn.commit()
 
